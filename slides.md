@@ -1,3 +1,6 @@
+---
+download: true
+---
 # 换一个方式构建全栈应用<uim-rocket class="text-5xl text-red-400 mx-2" />
 
 沈昊
