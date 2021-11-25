@@ -202,46 +202,160 @@ query {
     }
 }
 ```
-> 查询逻辑越复杂，gql的优势就会体现的更突出，而且gql还会更好地在前端复用
+
+> 查询逻辑越复杂，gql 的优势就会体现的更突出，而且 gql 还会更好地在前端复用
 
 ---
 
 # “重构”个人中心
 
-在我们之前的例子中，展示了淘宝个人中心页面元素，我们可以使用gql冰山一角的功能来完成这个简单的需求
+在我们之前的例子中，展示了淘宝个人中心页面元素，我们可以使用 gql 冰山一角的功能来完成这个简单的需求
 
 ```graphql
 query {
-   user(id: 10086){
-        nickname,
-        history{
-            title
-        }
-        wallt{
-            amount
-        }
-        collect{
-            title
-        }
-        message{
-            user_id
-        }
-        follow{
-            user_id
-        }
-        likes{
-            user_id
-        }
+  user(id: 10086) {
+    nickname
+    history {
+      title
     }
+    wallt {
+      amount
+    }
+    collect {
+      title
+    }
+    message {
+      user_id
+    }
+    follow {
+      user_id
+    }
+    likes {
+      user_id
+    }
+  }
 }
 ```
 
 ---
-# 如何构建健壮的Graphql
 
-<iframe src="https://codesandbox.io/embed/github/vaiokey/express-graphql/tree/master/server?fontsize=14&hidenavigation=1&theme=dark"
+# 如何构建健壮的 Graphql
+
+<iframe src="https://codesandbox.io/embed/serene-dhawan-o5s8w?fontsize=14&hidenavigation=1&theme=dark"
      style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;"
-     title="express-graphql"
+     title="serene-dhawan-o5s8w"
      allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
      sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
    ></iframe>
+
+<br/>
+
+---
+
+# 构建 graphql 的成本比 restful 低么？
+
+> 需要定义大量的 type 和 resolvers，做复杂查询仍然很累
+
+如果我们需要过滤，分页，模糊搜索，批量插入，更新，删除等, 就得付出大量的心智维护各种各样的 Type
+
+> 如果有一款引擎接管我们的 graphql + 数据库，然后暴露给客户端，那么构建查询结果的成本基本等于 0
+
+Hasura 就是一个优秀的 Graphql 引擎，所以我们新的工作流程就是:
+
+<img src="/images/add-hasura.png" class="m-auto w-260 h-60" />
+
+---
+
+# hasura: 一睹为快
+
+数据库引擎: postgres
+
+<video autoplay loop controls>
+  <source src="/video/screencast-localhost_8080-2021.11.24-17_00_36.mp4" type="video/mp4">
+</video>
+
+<style>
+  video{
+    width: 90vw;
+    height: 60vh;
+  }
+</style>
+
+
+---
+
+# 浅析hasura
+
+<br/>
+
+<img src="/images/hasura-content.png" class="m-auto w-200 h-80" />
+
+---
+
+
+# 细细一品
+
+hasura强归强，但是并没有解决我们的问题，即“需求变更时”，后端代码尽可能不参与更改
+
+hasura的mutation和query功能，能满足绝大部分程序的需要，但是对于复杂业务逻辑来说，单纯的mutation已经满足不了我们了:
+
+```graphql
+mutation MyMutation {
+  insert_products(objects: {desc: "介绍", price: "12", title: "产品第一", push_user_id: 1}) {
+    returning {
+      id
+    }
+  }
+}
+
+```
+
+>比如说我们需要新增一个产品，并且给用户增加积分且同步给第三方推送服务，这种需求我们优先考虑Action实现
+
+所以我们需要将“读(hasura query)”和“写(hasura action)”分离，各司其职。
+
+hasura提供了action功能可以让开发者编写复杂的自定义逻辑，我们可以使用action去实现诸如删除/下单/提交等复杂业务逻辑
+
+---
+
+<img src="/images/hasura-actions.png" class="m-auto" />
+
+<br/>
+
+> action的回调实现我们可以用serverless函数或者熟悉的restapi
+
+> 图来源于https://hasura.io/docs/latest/graphql/core/actions/index.html
+
+---
+
+# CQRS
+
+CQRS 是“命令查询责任分离”（Command Query Responsibility Segregation）的缩写
+
+在刚刚的章节中，大家或许对CQRS有了一定的了解，下面我们可以看一下CQRS的原图，帮助加深理解
+
+<img src="/images/cqrs.png" class="m-auto w-100 h-80">
+
+---
+
+# 捋一捋CQRS
+深入理解
+
+CQRS的终极奥义并不是读写分离，而是读操作能够多元化，能够实现数据的多重表示。
+
+Query Model 和 Command Model 是有区别的，前者可以支持各种有效的读模式，比如说我们在应用中看到的详情/列表/搜索功能（或者说不局限于物理实现，比如说使用Redis😊 ）；
+
+然后我们可以通过消息队列或者其他方式将Command Model中的变更同步到Query Model中
+
+CQRS并没有严格规定同步的机制，你不仅可以通过消息队列来同步，也可以同步的更新2个模型，我们的目的就是保证写操作和读操作一致即可。
+
+### 什么样子的场景适合用微服务？
+<br/>
+
+1. 与大多数应用程序一样，我们通常不会区分读和写，但是当2个操作不能满足业务需求，或者想在现有情况下对程序减负，那么此时引进CQRS会很有必要。
+2. 我们如果对2个操作进行分离，那么读操作就可以拥有自己的数据库/缓存，那么反之，写操作的变更/伸缩也不会受制于读操作
+---
+
+# 构建客户端和服务端
+我们需要选择一个易于演示的全栈框架
+
