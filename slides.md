@@ -403,7 +403,119 @@ const main = () => {
 
 ---
 
-# 编写API
-> 编写新增产品的API
+# 编写API的Protocols
+> TSRPC定义的protocols可以在前后端通用，即无需定义2次就可以使得API传输类型严格约束
 
-ORM框架: TypeORM
+```ts
+
+
+export interface ReqAddProduct {
+  /** 产品标题 */
+  title: string;
+  /** 产品介绍 */
+  desc: string;
+  /** 产品价格 */
+  price: string;
+  /** 推送产品的用户 */
+  pushUserId: number;
+}
+
+export interface ResAddProduct {
+  /** 服务端内容创建时间 */
+  id?: number
+}
+
+
+```
+
+---
+
+# 编写API的逻辑
+ORM框架：TypeOrm
+
+```ts {1-5|6|7|all}
+import { ApiCall } from "tsrpc";
+import {
+  ReqAddProduct,
+  ResAddProduct,
+} from "../shared/protocols/PtlAddProduct";
+import { Products } from "../entities/Products";
+import { getRepository } from "typeorm";
+
+export async function ApiAddProduct(
+  call: ApiCall<ReqAddProduct, ResAddProduct>
+) {
+  const res = await getRepository(Products).save(call.req);
+  call.succ({
+    id: res.id
+  })
+}
+
+```
+
+<br/>
+
+<div v-click="4">
+  也许你会问：沈公子你这个逻辑不严谨啊，为啥没有判断传入的参数都敢直接入库呀😠 ？
+</div>
+
+<br/>
+
+<div v-click="5">
+  事实上，得益于TS，TSRPC不仅支持我们在客户端传入参数时做参数校验，而且还会在传输到后端函数之前做一次 “运行时校验”
+</div>
+
+---
+
+# TS的运行时校验
+非分享重点，简单概括一下
+
+JS是解释性语言，而TS并非是一门独立的语言，我们如果想借助TS类型系统做一些数据的校验，我们不可能把TS的包塞到工程中，这显然是一个笑话。
+所以我们通常会有几种方案:
+
+1. JSON SCHEMA
+2. 基于装饰器/或者其他库
+
+但是很少有一种方案，让后端定义一个TS Interface 就搞定了运行时校验，而且支持复杂类型，TSRPC就做到了。
+那么复杂到什么情况呢 🤔️ ？
+
+
+```ts
+interface Colorful {
+  color: string;
+}
+interface Circle {
+  radius: number;
+}
+export interface Info {
+  title: "小乔的诶吃五（h5）" | "测试双煞" | "测试姐";
+  desc: Record<string, string>;
+  price: string | number;
+  other: Colorful & Circle
+}
+```
+
+---
+
+# 完善API
+别忘记了我呀，我是hasura
+
+为了实现CQRS，我们本应该写完api，就可以让客户端去调用了，届时客户端读取操作会通过graphql去hasura获取，写操作直接调用我们刚刚的API，看样子十分完美...
+
+但是当我们回想现有应用程序的时候，权限永远是最重要的；如果不借助hasura的权限系统，就要在Action API中自己重新实现一套权限系统，否则我们的API将没有任何安全可言。
+
+重新实现一套权限系统，这显然不可能的😠 。所以这也就是为什么我们非要把Action交给hasura管理
+
+我们在之前就已经预览了hasura-action的图例，我们这里再加深一下大家对hasura action的理解。
+
+<img src="/images/hasura-action-handler.png">
+
+---
+
+# 将Action添加到hasura中
+
+<div style="width: 100%;height: 400px;overflow: auto;">
+  <img class="m-auto" src="/images/add-action.jpg">
+</div>
+
+---
