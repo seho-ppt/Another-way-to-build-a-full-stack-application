@@ -281,10 +281,9 @@ Hasura 就是一个优秀的 Graphql 引擎，所以我们新的工作流程就�
   }
 </style>
 
-
 ---
 
-# 浅析hasura
+# 浅析 hasura
 
 <br/>
 
@@ -292,29 +291,29 @@ Hasura 就是一个优秀的 Graphql 引擎，所以我们新的工作流程就�
 
 ---
 
-
 # 细细一品
 
-hasura强归强，但是并没有解决我们的问题，即“需求变更时”，后端代码尽可能不参与更改
+hasura 强归强，但是并没有解决我们的问题，即“需求变更时”，后端代码尽可能不参与更改
 
-hasura的mutation和query功能，能满足绝大部分程序的需要，但是对于复杂业务逻辑来说，单纯的mutation已经满足不了我们了:
+hasura 的 mutation 和 query 功能，能满足绝大部分程序的需要，但是对于复杂业务逻辑来说，单纯的 mutation 已经满足不了我们了:
 
 ```graphql
 mutation MyMutation {
-  insert_products(objects: {desc: "介绍", price: "12", title: "产品第一", push_user_id: 1}) {
+  insert_products(
+    objects: { desc: "介绍", price: "12", title: "产品第一", push_user_id: 1 }
+  ) {
     returning {
       id
     }
   }
 }
-
 ```
 
->比如说我们需要新增一个产品，并且给用户增加积分且同步给第三方推送服务，这种需求我们优先考虑Action实现
+> 比如说我们需要新增一个产品，并且给用户增加积分且同步给第三方推送服务，这种需求我们优先考虑 Action 实现
 
 所以我们需要将“读(hasura query)”和“写(hasura action)”分离，各司其职。
 
-hasura提供了action功能可以让开发者编写复杂的自定义逻辑，我们可以使用action去实现诸如删除/下单/提交等复杂业务逻辑
+hasura 提供了 action 功能可以让开发者编写复杂的自定义逻辑，我们可以使用 action 去实现诸如删除/下单/提交等复杂业务逻辑
 
 ---
 
@@ -322,7 +321,7 @@ hasura提供了action功能可以让开发者编写复杂的自定义逻辑，�
 
 <br/>
 
-> action的回调实现我们可以用serverless函数或者熟悉的restapi
+> action 的回调实现我们可以用 serverless 函数或者熟悉的 restapi
 
 > 图来源于https://hasura.io/docs/latest/graphql/core/actions/index.html
 
@@ -332,83 +331,84 @@ hasura提供了action功能可以让开发者编写复杂的自定义逻辑，�
 
 CQRS 是“命令查询责任分离”（Command Query Responsibility Segregation）的缩写
 
-在刚刚的章节中，大家或许对CQRS有了一定的了解，下面我们可以看一下CQRS的原图，帮助加深理解
+在刚刚的章节中，大家或许对 CQRS 有了一定的了解，下面我们可以看一下 CQRS 的原图，帮助加深理解
 
 <img src="/images/cqrs.png" class="m-auto w-100 h-80">
 
 ---
 
-# 捋一捋CQRS
+# 捋一捋 CQRS
+
 深入理解
 
-CQRS的终极奥义并不是读写分离，而是读操作能够多元化，能够实现数据的多重表示。
+CQRS 的终极奥义并不是读写分离，而是读操作能够多元化，能够实现数据的多重表示。
 
-Query Model 和 Command Model 是有区别的，前者可以支持各种有效的读模式，比如说我们在应用中看到的详情/列表/搜索功能（或者说不局限于物理实现，比如说使用Redis😊 ）；
+Query Model 和 Command Model 是有区别的，前者可以支持各种有效的读模式，比如说我们在应用中看到的详情/列表/搜索功能（或者说不局限于物理实现，比如说使用 Redis😊 ）；
 
-然后我们可以通过消息队列或者其他方式将Command Model中的变更同步到Query Model中
+然后我们可以通过消息队列或者其他方式将 Command Model 中的变更同步到 Query Model 中
 
-CQRS并没有严格规定同步的机制，你不仅可以通过消息队列来同步，也可以同步的更新2个模型，我们的目的就是保证写操作和读操作一致即可。
+CQRS 并没有严格规定同步的机制，你不仅可以通过消息队列来同步，也可以同步的更新 2 个模型，我们的目的就是保证写操作和读操作一致即可。
 
 ### 什么样子的场景适合用微服务？
+
 <br/>
 
-1. 与大多数应用程序一样，我们通常不会区分读和写，但是当2个操作不能满足业务需求，或者想在现有情况下对程序减负，那么此时引进CQRS会很有必要。
-2. 我们如果对2个操作进行分离，那么读操作就可以拥有自己的数据库/缓存，那么反之，写操作的变更/伸缩也不会受制于读操作
+1. 与大多数应用程序一样，我们通常不会区分读和写，但是当 2 个操作不能满足业务需求，或者想在现有情况下对程序减负，那么此时引进 CQRS 会很有必要。
+2. 我们如果对 2 个操作进行分离，那么读操作就可以拥有自己的数据库/缓存，那么反之，写操作的变更/伸缩也不会受制于读操作
+
 ---
 
 # 构建客户端和服务端
+
 我们需要选择一个易于演示的全栈框架
 
-市面上的Typescript的真正意义上的全栈框架其实非常少，例如midway.js, uniapp (unicloud)，tsrpc...
+市面上的 Typescript 的真正意义上的全栈框架其实非常少，例如 midway.js, uniapp (unicloud)，tsrpc...
 
-前两者虽说可以在一个平台上实现2种端的代码，诸如此类:
+前两者虽说可以在一个平台上实现 2 种端的代码，诸如此类:
 
 ```ts
 // server.js
 const main = () => {
-  return ["1", "2", "3"]
-}
+  return ["1", "2", "3"];
+};
 ```
 
 ```html
-// app.vue
-// 这里仅仅是举一个例子，证明在客户端直接使用远端数据是多么愚蠢，和10几年前的前后端不分离没有太大区别
-<search-db >
-
-</search-db>
+// app.vue //
+这里仅仅是举一个例子，证明在客户端直接使用远端数据是多么愚蠢，和10几年前的前后端不分离没有太大区别
+<search-db> </search-db>
 ```
 
-而且前两者在全栈领域表现的不是特别优秀，没有彻底解决JS全栈开发的痛点:
+而且前两者在全栈领域表现的不是特别优秀，没有彻底解决 JS 全栈开发的痛点:
 
-1. 没有利用TypeScript去增强应用
+1. 没有利用 TypeScript 去增强应用
 2. 全栈应用应该是一体的，在本地开发需要更加方便
 3. 通信能力单一
 
 ---
 
 # TSRPC
-死忠粉在此，写全栈，我只用TSRPC 🐶
+
+死忠粉在此，写全栈，我只用 TSRPC 🐶
 
 我们在构建之前，确认我们需要完成的目标:
 
 1. 构造一个客户端页面（产品列表，新增产品）
-2. 构造一个服务端并且带有一个简单API
-3. 将API作为Action交给Hasura
-4. 完善客户端代码，体验Hasura+TSRPC带来的乐趣
+2. 构造一个服务端并且带有一个简单 API
+3. 将 API 作为 Action 交给 Hasura
+4. 完善客户端代码，体验 Hasura+TSRPC 带来的乐趣
 
 <br/>
 
-> 在ppt讲述过程中，我只会给大家展示部分核心流程，具体的代码预览会放在后面的环节，最终也会把demo链接留下
-
+> 在 ppt 讲述过程中，我只会给大家展示部分核心流程，具体的代码预览会放在后面的环节，最终也会把 demo 链接留下
 
 ---
 
-# 编写API的Protocols
-> TSRPC定义的protocols可以在前后端通用，即无需定义2次就可以使得API传输类型严格约束
+# 编写 API 的 Protocols
+
+> TSRPC 定义的 protocols 可以在前后端通用，即无需定义 2 次就可以使得 API 传输类型严格约束
 
 ```ts
-
-
 export interface ReqAddProduct {
   /** 产品标题 */
   title: string;
@@ -422,16 +422,15 @@ export interface ReqAddProduct {
 
 export interface ResAddProduct {
   /** 服务端内容创建时间 */
-  id?: number
+  id?: number;
 }
-
-
 ```
 
 ---
 
-# 编写API的逻辑
-ORM框架：TypeOrm
+# 编写 API 的逻辑
+
+ORM 框架：TypeOrm
 
 ```ts {1-5|6|7|all}
 import { ApiCall } from "tsrpc";
@@ -447,10 +446,9 @@ export async function ApiAddProduct(
 ) {
   const res = await getRepository(Products).save(call.req);
   call.succ({
-    id: res.id
-  })
+    id: res.id,
+  });
 }
-
 ```
 
 <br/>
@@ -467,18 +465,18 @@ export async function ApiAddProduct(
 
 ---
 
-# TS的运行时校验
+# TS 的运行时校验
+
 非分享重点，简单概括一下
 
-JS是解释性语言，而TS并非是一门独立的语言，我们如果想借助TS类型系统做一些数据的校验，我们不可能把TS的包塞到工程中，这显然是一个笑话。
+JS 是解释性语言，而 TS 并非是一门独立的语言，我们如果想借助 TS 类型系统做一些数据的校验，我们不可能把 TS 的包塞到工程中，这显然是一个笑话。
 所以我们通常会有几种方案:
 
 1. JSON SCHEMA
 2. 基于装饰器/或者其他库
 
-但是很少有一种方案，让后端定义一个TS Interface 就搞定了运行时校验，而且支持复杂类型，TSRPC就做到了。
+但是很少有一种方案，让后端定义一个 TS Interface 就搞定了运行时校验，而且支持复杂类型，TSRPC 就做到了。
 那么复杂到什么情况呢 🤔️ ？
-
 
 ```ts
 interface Colorful {
@@ -491,31 +489,104 @@ export interface Info {
   title: "小乔的诶吃五（h5）" | "测试双煞" | "测试姐";
   desc: Record<string, string>;
   price: string | number;
-  other: Colorful & Circle
+  other: Colorful & Circle;
 }
 ```
 
 ---
 
-# 完善API
-别忘记了我呀，我是hasura
+# 完善 API
 
-为了实现CQRS，我们本应该写完api，就可以让客户端去调用了，届时客户端读取操作会通过graphql去hasura获取，写操作直接调用我们刚刚的API，看样子十分完美...
+别忘记了我呀，我是 hasura
 
-但是当我们回想现有应用程序的时候，权限永远是最重要的；如果不借助hasura的权限系统，就要在Action API中自己重新实现一套权限系统，否则我们的API将没有任何安全可言。
+为了实现 CQRS，我们本应该写完 api，就可以让客户端去调用了，届时客户端读取操作会通过 graphql 去 hasura 获取，写操作直接调用我们刚刚的 API，看样子十分完美...
 
-重新实现一套权限系统，这显然不可能的😠 。所以这也就是为什么我们非要把Action交给hasura管理
+但是当我们回想现有应用程序的时候，权限永远是最重要的；如果不借助 hasura 的权限系统，就要在 Action API 中自己重新实现一套权限系统，否则我们的 API 将没有任何安全可言。
 
-我们在之前就已经预览了hasura-action的图例，我们这里再加深一下大家对hasura action的理解。
+重新实现一套权限系统，这显然不可能的 😠 。所以这也就是为什么我们非要把 Action 交给 hasura 管理
+
+我们在之前就已经预览了 hasura-action 的图例，我们这里再加深一下大家对 hasura action 的理解。
 
 <img src="/images/hasura-action-handler.png">
 
 ---
 
-# 将Action添加到hasura中
+# 将 Action 添加到 hasura 中
 
 <div style="width: 100%;height: 400px;overflow: auto;">
   <img class="m-auto" src="/images/add-action.jpg">
 </div>
 
 ---
+
+# 编写客户端代码
+
+客户端代码需要构建一个产品列表和一个新增产品页面
+
+我们其实也可以在 VSCode 借助插件快速的编写 gql 语句 (也可以在 hasura 控制台可视化的组装 gql 语句)：
+
+<img src="/images/graphql-code.gif" class="m-auto">
+
+---
+
+# 编写完整的 gql
+
+```ts
+export const getProducts = gql`
+  query getProducts($title: String, $desc: String, $minPrice: Int) {
+    products(
+      where: {
+        title: { _like: $title }
+        desc: { _like: $desc }
+        price: { _gte: $minPrice }
+      }
+    ) {
+      id
+      title
+      desc
+      price
+      push_user {
+        id
+        phone
+      }
+    }
+  }
+`;
+```
+
+- 支持对 title，desc 模糊查询
+- 支持对产品的最小价格的查询
+
+---
+
+# 前端核心代码
+
+```ts {1-2|2-3|4-7|8-9|all}
+const formData = ref<Readonly<FormData[] | undefined>>()
+
+const { load: loadProductList, result: productList, loading: productLoading } = useLazyQuery<FormData[], FormState>(getProducts, searchState.value)
+
+watch(() => productList.value, () => {
+  formData.value = useResult(productList).value
+})
+
+loadProductList()
+
+// 处理点击搜索
+const handleSearch = () => {
+  const { title, minPrice, desc } = formState.value
+  searchState.value = {
+    title: `%${title}%`,
+    desc: `%${desc}%`,
+    minPrice
+  }
+  loadProductList()
+}
+```
+---
+
+# 编写gql mutation语句
+这个mutation语句就是我们的action api
+
+
+
