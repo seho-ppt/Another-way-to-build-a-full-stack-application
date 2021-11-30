@@ -478,6 +478,8 @@ JS 是解释性语言，而 TS 并非是一门独立的语言，我们如果想�
 但是很少有一种方案，让后端定义一个 TS Interface 就搞定了运行时校验，而且支持复杂类型，TSRPC 就做到了。
 那么复杂到什么情况呢 🤔️ ？
 
+<div style="height: 25vh;overflow: scroll;">
+
 ```ts
 interface Colorful {
   color: string;
@@ -492,6 +494,10 @@ export interface Info {
   other: Colorful & Circle;
 }
 ```
+
+</div>
+
+
 
 ---
 
@@ -531,15 +537,26 @@ export interface Info {
 
 # 编写完整的 gql
 
+<div style="height: 40vh;overflow: scroll;">
+
 ```ts
-export const getProducts = gql`
-  query getProducts($title: String, $desc: String, $minPrice: Int) {
+export const GET_PRODUCTS = gql`
+  query getProducts(
+    $limit: Int = 10
+    $offset: Int
+    $title: String
+    $desc: String
+    $minPrice: Int
+  ) {
     products(
       where: {
         title: { _like: $title }
         desc: { _like: $desc }
         price: { _gte: $minPrice }
       }
+      limit: $limit
+      offset: $offset
+      order_by: { created_at: desc }
     ) {
       id
       title
@@ -550,9 +567,23 @@ export const getProducts = gql`
         phone
       }
     }
+    products_aggregate(
+      where: {
+        title: { _like: $title }
+        desc: { _like: $desc }
+        price: { _gte: $minPrice }
+      }
+    ) {
+      aggregate {
+        count
+      }
+    }
   }
 `;
 ```
+
+</div>
+<br/>
 
 - 支持对 title，desc 模糊查询
 - 支持对产品的最小价格的查询
@@ -561,32 +592,136 @@ export const getProducts = gql`
 
 # 前端核心代码
 
-```ts {1-2|2-3|4-7|8-9|all}
-const formData = ref<Readonly<FormData[] | undefined>>()
+<div style="height: 60vh;overflow: scroll;">
 
-const { load: loadProductList, result: productList, loading: productLoading } = useLazyQuery<FormData[], FormState>(getProducts, searchState.value)
+```ts {1-7|8-13|all}
+// 构造查询
+const {
+  result: product,
+  loading: productLoading,
+  fetchMore,
+} = useQuery<
+  {
+    products: FormData[] | null;
+    products_aggregate: { aggregate: { count: number } };
+  },
+  Partial<FormState>
+>(GET_PRODUCTS, {
+  limit: formState.value.limit,
+  offset: formState.value.offset,
+});
 
-watch(() => productList.value, () => {
-  formData.value = useResult(productList).value
-})
+watch(product, () => {
+  formData.value = product.value!.products;
+  pagination.value.total = product.value!.products_aggregate.aggregate.count;
+});
 
-loadProductList()
-
-// 处理点击搜索
-const handleSearch = () => {
-  const { title, minPrice, desc } = formState.value
+const getList = () => {
+  const { title, minPrice, desc, limit } = formState.value;
   searchState.value = {
-    title: `%${title}%`,
-    desc: `%${desc}%`,
-    minPrice
-  }
-  loadProductList()
-}
+    title: title !== "" ? `%${title}%` : null,
+    desc: desc !== "" ? `%${desc}%` : null,
+    minPrice: minPrice ? Number(minPrice) : null,
+    limit,
+    offset: (pagination.value.current - 1) * limit,
+  };
+  fetchMore({
+    variables: searchState.value,
+  });
+};
 ```
+
+</div>
+
 ---
 
-# 编写gql mutation语句
-这个mutation语句就是我们的action api
+# 编写 gql mutation 语句
 
+这个 mutation 语句就是我们的 action api
 
+```ts
+export const ADD_PRODUCT = gql`
+  mutation addProduct($params: AddProductInput!) {
+    addProduct(params: $params) {
+      id
+    }
+  }
+`;
+```
 
+前端只需要使用对应的 hook 来构造这个 mutation 即可
+
+```ts
+const {
+  mutate: addProductMutate,
+  loading: addProductMutateLoading,
+  onDone: onAddProductDone,
+} = useMutation<{ id: string }, { params: AddFormState }>(ADD_PRODUCT);
+```
+
+useMutation 和 useQuery 函数一样，都可以传入返回值和参数的泛型
+
+```ts
+function useMutation<TResult, TVariables>
+```
+
+---
+
+# 页面使用 API 完成添加操作
+
+```ts
+// 添加产品
+const handleAdd = () => {
+  addProductMutate({
+    params: {
+      ...addFormState.value,
+      price: Number(addFormState.value.price),
+    },
+  });
+};
+
+// 添加之后的回调
+onAddProductDone(() => {
+  addFormRef.value.resetFields();
+  pagination.value.current = 1;
+  addVisible.value = false;
+  getList();
+});
+```
+
+<br/>
+
+开始代码演示～～～
+
+---
+
+# 一点反思
+
+有待改进的问题
+
+1. 如果你看到这里，你可能会疑惑；graphql 和 hasura 好是好，方便了前后端，大大节省了开发时间和协调工作。但是后端开发同学当工作量大大减轻，剩下来的时间干什么，这就是后端架构的意义了。可能会去进行系统设计，研究领域知识等；这些在以前业务中占比很少的部分，在这样前后端协作的方式中，是需要付出大量时间实践和沉淀的。
+
+2. 表面上看前端包揽了设计+前端交互+后端查询代码编写（希望别锤死我 😄 ）但是实际上，前端做的事情比以前更少了；对于设计而言太多的 UI 库可以供我们使用，原子化 css 的发展也帮助了前端工程师进一步减轻负担，后端查询代码编写过程中也更能帮助前端程序员对业务的理解。
+
+3. 近几年 serverless 的突起，更代表了前端正在随着浪潮被冲向后端领域，而后端势必会朝着更深层次发展...
+
+---
+
+# 总结一下
+
+帮助大家消化一下
+
+- 我们今天初识了 Hasura 这个优秀的引擎
+- 然后对 graphql 的了解更深一点了
+- 其次在我们构建 demo 的时候，又简单的了解了 tsrpc 这款全栈框架
+- 简单了解了 CQRS 架构
+
+随后我们再放一张我们应用构建完毕的图例
+
+---
+
+# 完结
+
+<div style="height: 90vh; overflow: scroll;">
+<img src="/images/core.png">
+</div>
