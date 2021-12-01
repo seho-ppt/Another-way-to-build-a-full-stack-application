@@ -33,9 +33,9 @@ img{
 <ul>
     <li>从RestApi到GraphQL</li>
     <li>如何构建GraphQL</li>
-    <li>Hasura是什么，它能改变应用程序开发方式吗？</li>
-    <li>WebApi框架的众神崛起：Midway/TSRPC</li>
+    <li>Hasura是什么</li>
     <li>CQRS</li>
+    <li>WEB全栈框架的众神崛起：Nuxt/Next/TSRPC</li>
     <li>演示在Vue3下与TSRPC,Hasura的畅快开发体验</li>
     <li>反思: 为现有架构带来的不是新技术栈，而是新思想</li>
     <li>小结</li>
@@ -89,7 +89,7 @@ DELETE http://www.store.com/products/12345
 
 使用 restful 我们通常都会访问多个端点来获取数据
 
-<img src="/images/user-center.png" class="m-auto w-120 h-100" />
+<img src="/images/user-center.png" class="m-auto w-110 h-100" />
 
 ---
 
@@ -144,7 +144,7 @@ GET http://www.store.com/user/1
 
 ---
 
-其实做的事情和原来一样，我们可以使用 Graphql 来描述 API，甚至更简单了...<br/>
+我们可以使用 Graphql 来描述 API，这样就更简单，更清晰了...<br/>
 
 ```graphql
 query {
@@ -183,9 +183,9 @@ query {
 
 它不仅仅解决了 restapi 的痛点，也更符合开发思维
 
-无论是前端还是后端，在编写 graphql 语句的时候，都是对程序设计的重新推理。它并不像 restapi 一样，以前可能后端程序员更关心程序设计，而现在前端开发编写语句将会和后端一样，思路是带着程序走的，无疑 gql 的形式更好理解。
+无论是前端还是后端，在编写 graphql 语句的时候，都是对程序设计的重新推理。它并不像 restapi 一样，以前可能后端程序员更关心程序设计，而现在前端开发编写语句将会和后端一样，思路是带着程序走的，而且无疑 gql 的形式更好理解。
 
-可以举一个简单例子
+可以举一个简单例子（获取产品列表）
 
 ```js
 GET http://www.store.com/products
@@ -239,7 +239,7 @@ query {
 
 ---
 
-# 如何构建健壮的 Graphql
+# 如何构建健壮的 Graphql（nodejs）
 
 <iframe src="https://codesandbox.io/embed/serene-dhawan-o5s8w?fontsize=14&hidenavigation=1&theme=dark"
      style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;"
@@ -252,11 +252,56 @@ query {
 
 ---
 
+# 其他语言构建graphql（java, go...）
+java demo: https://www.graphql-java.com/tutorials/getting-started-with-spring-boot
+
+<div style="height: 50vh;overflow: scroll;">
+
+```java
+@Bean
+public GraphQL graphQL() {
+    return graphQL;
+}
+
+@PostConstruct
+public void init() throws IOException {
+    URL url = Resources.getResource("schema.graphqls");
+    String sdl = Resources.toString(url, Charsets.UTF_8);
+    GraphQLSchema graphQLSchema = buildSchema(sdl);
+    this.graphQL = GraphQL.newGraphQL(graphQLSchema).build();
+}
+
+@Autowired
+GraphQLDataFetchers graphQLDataFetchers;
+
+private GraphQLSchema buildSchema(String sdl) {
+    TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(sdl);
+    RuntimeWiring runtimeWiring = buildWiring();
+    SchemaGenerator schemaGenerator = new SchemaGenerator();
+    return schemaGenerator.makeExecutableSchema(typeRegistry, runtimeWiring);
+}
+
+private RuntimeWiring buildWiring() {
+    return RuntimeWiring.newRuntimeWiring()
+            .type(newTypeWiring("Query")
+                    .dataFetcher("bookById", graphQLDataFetchers.getBookByIdDataFetcher()))
+            .type(newTypeWiring("Book")
+                    .dataFetcher("author", graphQLDataFetchers.getAuthorDataFetcher()))
+            .build();
+}
+```
+
+</div>
+
+> 好像nodejs确实简单不少，hhh 😄
+
+---
+
 # 构建 graphql 的成本比 restful 低么？
 
-> 需要定义大量的 type 和 resolvers，做复杂查询仍然很累
+> 需要定义大量的 schema 和 resolvers，做复杂查询仍然很累
 
-如果我们需要过滤，分页，模糊搜索，批量插入，更新，删除等, 就得付出大量的心智维护各种各样的 Type
+如果我们需要过滤，分页，模糊搜索，批量插入，更新，删除等, 就得付出大量的心智维护代码中各种各样的 Schema
 
 > 如果有一款引擎接管我们的 graphql + 数据库，然后暴露给客户端，那么构建查询结果的成本基本等于 0
 
@@ -268,7 +313,7 @@ Hasura 就是一个优秀的 Graphql 引擎，所以我们新的工作流程就�
 
 # hasura: 一睹为快
 
-数据库引擎: postgres
+数据库: postgres
 
 <video autoplay loop controls>
   <source src="/video/screencast-localhost_8080-2021.11.24-17_00_36.mp4" type="video/mp4">
@@ -293,7 +338,7 @@ Hasura 就是一个优秀的 Graphql 引擎，所以我们新的工作流程就�
 
 # 细细一品
 
-hasura 强归强，但是并没有解决我们的问题，即“需求变更时”，后端代码尽可能不参与更改
+hasura 强归强，但是现在并没有解决复杂业务逻辑如何编写代码的问题
 
 hasura 的 mutation 和 query 功能，能满足绝大部分程序的需要，但是对于复杂业务逻辑来说，单纯的 mutation 已经满足不了我们了:
 
@@ -309,9 +354,7 @@ mutation MyMutation {
 }
 ```
 
-> 比如说我们需要新增一个产品，并且给用户增加积分且同步给第三方推送服务，这种需求我们优先考虑 Action 实现
-
-所以我们需要将“读(hasura query)”和“写(hasura action)”分离，各司其职。
+> 比如说我们需要新增一个产品，并且给用户增加积分且同步给第三方推送服务
 
 hasura 提供了 action 功能可以让开发者编写复杂的自定义逻辑，我们可以使用 action 去实现诸如删除/下单/提交等复杂业务逻辑
 
@@ -321,17 +364,29 @@ hasura 提供了 action 功能可以让开发者编写复杂的自定义逻辑�
 
 <br/>
 
-> action 的回调实现我们可以用 serverless 函数或者熟悉的 restapi
+> action 的回调实现我们可以用 serverless 函数或者熟悉的 restapi，或者就一个单纯的回调函数
 
 > 图来源于https://hasura.io/docs/latest/graphql/core/actions/index.html
 
+---
+
+# Query & Action 读写分离
+聪明的小伙伴都联想到了 ”读写分离“
+
+刚刚介绍了Hasura的Action功能，虽然我们写的回调函数可以用任意方式实现，但是终究独立于客户端，也独立于hasura的query查询。
+
+所以我们在客户端使用的时候，尽管需求/ui变更，除了 一小部分需求 需要后端更改核心逻辑之外，剩下的需求都可以前端工程师独立完成。
+
+届时，后端程序员只要把后端架构，表结构梳理完毕，整个初版本的应用就完成了一半了，而前端工程师得益于hasura，以后无需等待API，直接自由的可视化操作查询。
+
+<img src="/images/hasura-save-time.png">
 ---
 
 # CQRS
 
 CQRS 是“命令查询责任分离”（Command Query Responsibility Segregation）的缩写
 
-在刚刚的章节中，大家或许对 CQRS 有了一定的了解，下面我们可以看一下 CQRS 的原图，帮助加深理解
+在刚刚的章节中，大家或许对 "读写分离" 有了一定的了解，下面我们可以看一下 CQRS 的图例，帮助加深理解
 
 <img src="/images/cqrs.png" class="m-auto w-100 h-80">
 
@@ -349,7 +404,7 @@ Query Model 和 Command Model 是有区别的，前者可以支持各种有效�
 
 CQRS 并没有严格规定同步的机制，你不仅可以通过消息队列来同步，也可以同步的更新 2 个模型，我们的目的就是保证写操作和读操作一致即可。
 
-### 什么样子的场景适合用微服务？
+### 什么样子的场景适合用？
 
 <br/>
 
@@ -358,13 +413,13 @@ CQRS 并没有严格规定同步的机制，你不仅可以通过消息队列来
 
 ---
 
-# 构建客户端和服务端
+# 开始构建客户端和服务端
 
 我们需要选择一个易于演示的全栈框架
 
-市面上的 Typescript 的真正意义上的全栈框架其实非常少，例如 midway.js, uniapp (unicloud)，tsrpc...
+市面上真正意义上的全栈框架其实非常少，例如 nuxt/next/tsrpc...
 
-前两者虽说可以在一个平台上实现 2 种端的代码，诸如此类:
+虽说都可以在一个平台上实现 2 种端的代码，诸如此类:
 
 ```ts
 // server.js
@@ -373,17 +428,16 @@ const main = () => {
 };
 ```
 
-```html
-// app.vue //
-这里仅仅是举一个例子，证明在客户端直接使用远端数据是多么愚蠢，和10几年前的前后端不分离没有太大区别
-<search-db> </search-db>
+```ts
+// app.vue
+const data = call.api("main")
 ```
 
-而且前两者在全栈领域表现的不是特别优秀，没有彻底解决 JS 全栈开发的痛点:
+但是作为demo，我们选择什么框架都能达到我们的目标，我这里选择tsrpc，因为有以下三个原因
 
-1. 没有利用 TypeScript 去增强应用
-2. 全栈应用应该是一体的，在本地开发需要更加方便
-3. 通信能力单一
+1. 对TS更加友好
+2. 偏后端的全栈框架解决方案（demo中对前端要求不高）
+3. 优秀的通信能力，类型安全，跨平台部署...
 
 ---
 
@@ -394,7 +448,7 @@ const main = () => {
 我们在构建之前，确认我们需要完成的目标:
 
 1. 构造一个客户端页面（产品列表，新增产品）
-2. 构造一个服务端并且带有一个简单 API
+2. 构造一个服务端并且带有一个添加产品 API
 3. 将 API 作为 Action 交给 Hasura
 4. 完善客户端代码，体验 Hasura+TSRPC 带来的乐趣
 
@@ -497,8 +551,6 @@ export interface Info {
 
 </div>
 
-
-
 ---
 
 # 完善 API
@@ -594,7 +646,7 @@ export const GET_PRODUCTS = gql`
 
 <div style="height: 60vh;overflow: scroll;">
 
-```ts {1-7|8-13|all}
+```ts {1-15|16-20|all}
 // 构造查询
 const {
   result: product,
@@ -722,6 +774,6 @@ onAddProductDone(() => {
 
 # 完结
 
-<div style="height: 90vh; overflow: scroll;">
+<div style="height: 60vh; overflow: scroll;">
 <img src="/images/core.png">
 </div>
